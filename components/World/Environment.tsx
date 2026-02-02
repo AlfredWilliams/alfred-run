@@ -10,9 +10,8 @@ import * as THREE from 'three';
 import { useStore } from '../../store';
 import { LANE_WIDTH } from '../../types';
 
-const StarField: React.FC = () => {
+const StarField: React.FC<{ count: number }> = ({ count }) => {
   const speed = useStore(state => state.speed);
-  const count = 3000; // Increased star count for better density
   const meshRef = useRef<THREE.Points>(null);
   
   const positions = useMemo(() => {
@@ -36,7 +35,7 @@ const StarField: React.FC = () => {
       pos[i * 3 + 2] = z; 
     }
     return pos;
-  }, []);
+  }, [count]);
 
   useFrame((state, delta) => {
     if (!meshRef.current) return;
@@ -127,10 +126,13 @@ const LaneGuides: React.FC = () => {
     );
 };
 
-const RetroSun: React.FC = () => {
+const RetroSun: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
     const matRef = useRef<THREE.ShaderMaterial>(null);
     const sunGroupRef = useRef<THREE.Group>(null);
     const { isFeverMode } = useStore();
+
+    // Reduce segments for mobile
+    const segments = isMobile ? 16 : 32;
 
     useFrame((state) => {
         if (matRef.current) {
@@ -158,9 +160,8 @@ const RetroSun: React.FC = () => {
 
     return (
         <group ref={sunGroupRef} position={[0, 30, -180]}>
-            {/* Reduced Geometry for Mobile: 32 segments instead of 64 */}
             <mesh>
-                <sphereGeometry args={[35, 32, 32]} />
+                <sphereGeometry args={[35, segments, segments]} />
                 <shaderMaterial
                     ref={matRef}
                     uniforms={uniforms}
@@ -180,24 +181,13 @@ const RetroSun: React.FC = () => {
                         uniform vec3 uColorBottom;
 
                         void main() {
-                            // 1. Basic Vertical Gradient
                             vec3 color = mix(uColorBottom, uColorTop, vUv.y);
-                            
-                            // 2. Synthwave Scanlines
                             float stripeFreq = 40.0;
                             float stripeSpeed = 1.0;
-                            // Simple scanline logic without heavy rim lighting
                             float stripes = sin((vUv.y * stripeFreq) - (uTime * stripeSpeed));
-                            
-                            // Create sharp bands
                             float stripeMask = smoothstep(0.2, 0.3, stripes);
-                            
-                            // Fade scanlines out towards the top of the sun
                             float scanlineFade = smoothstep(0.7, 0.3, vUv.y); 
-                            
-                            // Apply dark bands (scanlines)
                             vec3 finalColor = mix(color, color * 0.1, (1.0 - stripeMask) * scanlineFade);
-
                             gl_FragColor = vec4(finalColor, 1.0);
                         }
                     `}
@@ -216,15 +206,9 @@ const MovingGrid: React.FC = () => {
         if (meshRef.current) {
              const activeSpeed = speed > 0 ? speed : 5;
              offsetRef.current += activeSpeed * delta;
-             
-             // Grid cell size = 400 (length) / 40 (segments) = 10 units
              const cellSize = 10;
-             
-             // Move mesh forward (+Z) to simulate travel, then snap back
              const zPos = -100 + (offsetRef.current % cellSize);
              meshRef.current.position.z = zPos;
-
-             // Color transition
              const mat = meshRef.current.material as THREE.MeshBasicMaterial;
              const targetColor = isFeverMode ? new THREE.Color('#ffaa00') : new THREE.Color('#8800ff');
              mat.color.lerp(targetColor, 0.05);
@@ -244,7 +228,7 @@ const MovingGrid: React.FC = () => {
     );
 };
 
-export const Environment: React.FC = () => {
+export const Environment: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
   return (
     <>
       <color attach="background" args={['#050011']} />
@@ -254,11 +238,12 @@ export const Environment: React.FC = () => {
       <directionalLight position={[0, 20, -10]} intensity={1.5} color="#00ffff" />
       <pointLight position={[0, 25, -150]} intensity={2} color="#ff00aa" distance={200} decay={2} />
       
-      <StarField />
+      {/* Significantly reduce star count on mobile for performance */}
+      <StarField count={isMobile ? 800 : 3000} />
       <MovingGrid />
       <LaneGuides />
       
-      <RetroSun />
+      <RetroSun isMobile={isMobile} />
     </>
   );
 };

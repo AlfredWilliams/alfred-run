@@ -89,7 +89,6 @@ const SHOP_BACK_GEO = new THREE.BoxGeometry(1, 5, 1.2);
 const SHOP_OUTLINE_GEO = new THREE.BoxGeometry(1, 7.2, 0.8);
 const SHOP_FLOOR_GEO = new THREE.PlaneGeometry(1, 4);
 
-const PARTICLE_COUNT = 400; // Reduced for performance
 const BASE_LETTER_INTERVAL = 150; 
 const OBSTACLE_HEIGHT = 1.6;
 
@@ -104,26 +103,29 @@ const FONT_URL = "https://cdn.jsdelivr.net/npm/three/examples/fonts/helvetiker_b
 const _tempVec = new THREE.Vector3();
 
 // --- Particle System ---
-const ParticleSystem: React.FC = () => {
+const ParticleSystem: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
+    // Drastically reduce particles on mobile to prevent CPU bottleneck
+    const count = isMobile ? 100 : 400;
+    
     const mesh = useRef<THREE.InstancedMesh>(null);
     const dummy = useMemo(() => new THREE.Object3D(), []);
     
-    const particles = useMemo(() => new Array(PARTICLE_COUNT).fill(0).map(() => ({
+    const particles = useMemo(() => new Array(count).fill(0).map(() => ({
         life: 0,
         pos: new THREE.Vector3(),
         vel: new THREE.Vector3(),
         rot: new THREE.Vector3(),
         rotVel: new THREE.Vector3(),
         color: new THREE.Color()
-    })), []);
+    })), [count]);
 
     useEffect(() => {
         const handleExplosion = (e: CustomEvent) => {
             const { position, color } = e.detail;
             let spawned = 0;
-            const burstAmount = 30; // Reduced burst
+            const burstAmount = isMobile ? 10 : 30; 
 
-            for(let i = 0; i < PARTICLE_COUNT; i++) {
+            for(let i = 0; i < count; i++) {
                 const p = particles[i];
                 if (p.life <= 0) {
                     p.life = 0.8 + Math.random() * 0.4; 
@@ -152,7 +154,7 @@ const ParticleSystem: React.FC = () => {
         
         window.addEventListener('particle-burst', handleExplosion as any);
         return () => window.removeEventListener('particle-burst', handleExplosion as any);
-    }, [particles]);
+    }, [particles, count, isMobile]);
 
     useFrame((state, delta) => {
         if (!mesh.current) return;
@@ -193,7 +195,7 @@ const ParticleSystem: React.FC = () => {
     });
 
     return (
-        <instancedMesh ref={mesh} args={[undefined, undefined, PARTICLE_COUNT]}>
+        <instancedMesh ref={mesh} args={[undefined, undefined, count]}>
             <octahedronGeometry args={[0.5, 0]} />
             <meshBasicMaterial toneMapped={false} transparent opacity={0.9} />
         </instancedMesh>
@@ -206,7 +208,7 @@ const getRandomLane = (laneCount: number) => {
     return Math.floor(Math.random() * (max * 2 + 1)) - max;
 };
 
-export const LevelManager: React.FC = () => {
+export const LevelManager: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
   const { 
     status, 
     speed, 
@@ -683,7 +685,7 @@ export const LevelManager: React.FC = () => {
 
   return (
     <group>
-      <ParticleSystem />
+      <ParticleSystem isMobile={isMobile} />
       {objectsRef.current.map(obj => {
         if (!obj.active) return null;
         return <GameEntity key={obj.id} data={obj} />;

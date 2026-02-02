@@ -4,7 +4,7 @@
 */
 
 
-import React, { Suspense, useRef, useEffect } from 'react';
+import React, { Suspense, useRef, useEffect, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Environment } from './components/World/Environment';
@@ -71,43 +71,57 @@ const CameraController = () => {
   return null;
 };
 
-function Scene() {
+function Scene({ isMobile }: { isMobile: boolean }) {
   return (
     <>
-        <Environment />
+        <Environment isMobile={isMobile} />
         <group>
             {/* Attach a userData to identify player group for LevelManager collision logic */}
             <group userData={{ isPlayer: true }} name="PlayerGroup">
                  <Player />
             </group>
-            <LevelManager />
+            <LevelManager isMobile={isMobile} />
         </group>
-        <Effects />
+        {/* Disable post-processing on mobile to hit 60fps on low-end devices */}
+        {!isMobile && <Effects />}
     </>
   );
 }
 
 function App() {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    // Simple check: if width < 768px, treat as mobile for optimization purposes
+    const checkMobile = () => {
+        setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   return (
     // h-[100dvh] ensures full height on mobile browsers with dynamic toolbars
     <div className="relative w-full h-[100dvh] bg-black overflow-hidden select-none touch-none">
       <HUD />
       <Canvas
-        shadows={{ type: THREE.PCFSoftShadowMap }}
-        dpr={[1, 1.5]} // Cap pixel ratio to 1.5 for performance stability on high-res mobile screens
+        // Use BasicShadowMap for high performance on mobile. PCFSoft is too heavy for low-end GPUs.
+        shadows={{ type: isMobile ? THREE.BasicShadowMap : THREE.PCFSoftShadowMap }}
+        // Force dpr to 1 on mobile. 1.5/2.0 kills battery and FPS on cheap phones.
+        dpr={isMobile ? 1 : [1, 1.5]} 
         gl={{ 
             antialias: false, 
             stencil: false, 
             depth: true, 
             powerPreference: "high-performance",
-            // Preserve drawing buffer can help with screenshots but hurts perf, keep false
             preserveDrawingBuffer: false 
         }}
         camera={{ position: [0, 5.5, 8], fov: 60 }}
       >
         <CameraController />
         <Suspense fallback={null}>
-            <Scene />
+            <Scene isMobile={isMobile} />
         </Suspense>
       </Canvas>
     </div>
