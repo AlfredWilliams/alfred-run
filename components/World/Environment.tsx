@@ -23,14 +23,72 @@ const THEMES = [
   },
   // Level 2, 4, 6... (DAY / BRIGHT CYBER SUNRISE)
   {
-    bg: '#1a0b2e',        // Lighter Purple/Blue base
-    fog: '#ff9e42',       // Bright Orange Fog (Sunrise look)
+    bg: '#2d1b4e',        // Rich Purple/Blue base (Morning Sky)
+    fog: '#ff7700',       // Bright Orange Fog (Sunrise look)
     grid: '#00ffff',      // Bright Cyan Grid (High contrast)
     sunTop: '#ffffff',    // White Hot Sun
     sunBot: '#ff00ff',    // Magenta Sun Bottom
     light: '#ffaa00'      // Warm Sunlight
   }
 ];
+
+const SpeedLines: React.FC = () => {
+    const { speed, isFeverMode } = useStore();
+    const count = 40;
+    const meshRef = useRef<THREE.InstancedMesh>(null);
+    const dummy = useMemo(() => new THREE.Object3D(), []);
+    
+    // Distribute lines in a tunnel shape around the player
+    const lines = useMemo(() => {
+        return new Array(count).fill(0).map(() => {
+            const angle = Math.random() * Math.PI * 2;
+            const radius = 8 + Math.random() * 8; // Outside playing area
+            return {
+                x: Math.cos(angle) * radius,
+                y: Math.sin(angle) * radius + 5, // Offset vertically
+                z: -50 + Math.random() * 100,
+                speedOffset: Math.random() * 0.5 + 0.5,
+                length: Math.random() * 5 + 5
+            };
+        });
+    }, []);
+
+    useFrame((state, delta) => {
+        if (!meshRef.current) return;
+        
+        // Only visible at high speeds or fever mode
+        const isFast = speed > 40 || isFeverMode;
+        if (!isFast) {
+            meshRef.current.visible = false;
+            return;
+        }
+        meshRef.current.visible = true;
+
+        const moveSpeed = speed * 2.0;
+
+        lines.forEach((line, i) => {
+            line.z += moveSpeed * delta * line.speedOffset;
+            
+            if (line.z > 20) {
+                line.z = -100 - Math.random() * 50;
+            }
+
+            dummy.position.set(line.x, line.y, line.z);
+            dummy.scale.set(0.05, 0.05, line.length);
+            dummy.rotation.set(0, 0, 0);
+            dummy.updateMatrix();
+            meshRef.current!.setMatrixAt(i, dummy.matrix);
+        });
+        meshRef.current.instanceMatrix.needsUpdate = true;
+    });
+
+    return (
+        <instancedMesh ref={meshRef} args={[undefined, undefined, count]}>
+            <cylinderGeometry args={[1, 1, 1, 4]} />
+            <meshBasicMaterial color="#ffffff" transparent opacity={0.3} blending={THREE.AdditiveBlending} />
+        </instancedMesh>
+    );
+};
 
 const StarField: React.FC<{ count: number }> = ({ count }) => {
   const speed = useStore(state => state.speed);
@@ -134,8 +192,8 @@ const LaneGuides: React.FC = () => {
             <mesh position={[0, -0.02, -20]} rotation={[-Math.PI / 2, 0, 0]}>
                 <planeGeometry args={[laneCount * LANE_WIDTH, 200]} />
                 <meshBasicMaterial 
-                  // In Day mode (themeIndex 1), use a brighter floor color
-                  color={isFeverMode ? "#443300" : isNight ? "#1a0b2e" : "#2a1b4e"} 
+                  // In Day mode (themeIndex 1), use a darker, contrasting floor color
+                  color={isFeverMode ? "#443300" : isNight ? "#1a0b2e" : "#1a0530"} 
                   transparent opacity={0.9} 
                 />
             </mesh>
@@ -145,9 +203,9 @@ const LaneGuides: React.FC = () => {
                 <mesh key={`sep-${i}`} position={[x, 0, -20]} rotation={[-Math.PI / 2, 0, 0]}>
                     <planeGeometry args={[0.05, 200]} /> 
                     <meshBasicMaterial 
-                        color={isFeverMode ? "#ffcc00" : isNight ? "#00ffff" : "#ff00ff"} 
+                        color={isFeverMode ? "#ffcc00" : isNight ? "#00ffff" : "#ff00aa"} 
                         transparent 
-                        opacity={0.4} 
+                        opacity={0.6} 
                     />
                 </mesh>
             ))}
@@ -276,14 +334,15 @@ export const Environment: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
       <color attach="background" args={[theme.bg]} />
       <fog attach="fog" args={[theme.fog, 40, 160]} />
       
-      <ambientLight intensity={0.2} color="#400080" />
-      <directionalLight position={[0, 20, -10]} intensity={1.5} color={theme.light} />
+      <ambientLight intensity={0.4} color={theme.bg} />
+      <directionalLight position={[0, 20, -10]} intensity={1.2} color={theme.light} />
       <pointLight position={[0, 25, -150]} intensity={2} color={theme.sunBot} distance={200} decay={2} />
       
       {/* Significantly reduce star count on mobile for performance */}
       <StarField count={isMobile ? 800 : 3000} />
       <MovingGrid />
       <LaneGuides />
+      <SpeedLines />
       
       <RetroSun isMobile={isMobile} />
     </>

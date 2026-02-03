@@ -5,7 +5,7 @@
 
 
 import React, { useState, useEffect } from 'react';
-import { Heart, Zap, Trophy, MapPin, Diamond, Rocket, ArrowUpCircle, Shield, Activity, PlusCircle, Play, Lock, Edit3, Pause, Settings, Magnet, Terminal, Cpu, Radio } from 'lucide-react';
+import { Heart, Zap, Trophy, MapPin, Diamond, Rocket, ArrowUpCircle, Shield, Activity, PlusCircle, Play, Lock, Edit3, Pause, Settings, Magnet, Terminal, Cpu, Radio, Home } from 'lucide-react';
 import { useStore } from '../../store';
 import { GameStatus, LETTER_COLORS, ShopItem, RUN_SPEED_BASE, IMMORTALITY_DURATION, IMMORTALITY_COOLDOWN } from '../../types';
 import { audio } from '../System/Audio';
@@ -73,8 +73,11 @@ const ShopScreen: React.FC = () => {
     }, []);
 
     return (
-        <div className="absolute inset-0 bg-black/90 z-[100] text-white pointer-events-auto backdrop-blur-md overflow-y-auto">
-             <div className="flex flex-col items-center justify-center min-h-full py-8 px-4">
+        <div 
+            className="absolute inset-0 bg-black/90 z-[100] text-white pointer-events-auto backdrop-blur-md overflow-y-auto px-4 py-8"
+            style={{ paddingTop: 'max(2rem, env(safe-area-inset-top))', paddingBottom: 'max(2rem, env(safe-area-inset-bottom))' }}
+        >
+             <div className="flex flex-col items-center justify-center min-h-full">
                  <h2 className="text-3xl md:text-4xl font-black text-cyan-400 mb-2 font-cyber tracking-widest text-center">CYBER SHOP</h2>
                  <div className="flex items-center text-yellow-400 mb-6 md:mb-8">
                      <span className="text-base md:text-lg mr-2">AVAILABLE CREDITS:</span>
@@ -260,7 +263,10 @@ const BriefingScreen: React.FC = () => {
     }, [startGame]);
 
     return (
-        <div className="absolute inset-0 bg-black z-[100] text-green-400 font-mono flex items-center justify-center p-8 pointer-events-auto">
+        <div 
+            className="absolute inset-0 bg-black z-[100] text-green-400 font-mono flex items-center justify-center p-8 pointer-events-auto"
+            style={{ paddingTop: 'max(2rem, env(safe-area-inset-top))' }}
+        >
             <div className="w-full max-w-2xl border-2 border-green-500/50 p-6 md:p-10 rounded-sm bg-black/90 shadow-[0_0_50px_rgba(0,255,0,0.1)] relative overflow-hidden">
                 {/* Scanlines */}
                 <div className="absolute inset-0 bg-[linear-gradient(transparent_50%,rgba(0,255,0,0.05)_50%)] bg-[length:100%_4px] pointer-events-none"></div>
@@ -334,6 +340,7 @@ export const HUD: React.FC = () => {
   const level = useStore(s => s.level);
   const gemsCollected = useStore(s => s.gemsCollected);
   const isFeverMode = useStore(s => s.isFeverMode);
+  const isBonusStage = useStore(s => s.isBonusStage); 
   const speed = useStore(s => s.speed);
   const targetWord = useStore(s => s.targetWord);
   const multiplier = useStore(s => s.multiplier);
@@ -361,7 +368,13 @@ export const HUD: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [togglePause]);
 
-  const containerClass = "absolute inset-0 pointer-events-none flex flex-col justify-between p-4 md:p-8 z-50";
+  const containerClass = "absolute inset-0 pointer-events-none flex flex-col justify-between z-50";
+  const safePaddingStyle = {
+      paddingTop: 'max(1rem, env(safe-area-inset-top))',
+      paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
+      paddingLeft: 'max(1rem, env(safe-area-inset-left))',
+      paddingRight: 'max(1rem, env(safe-area-inset-right))',
+  };
 
   if (status === GameStatus.SHOP) {
       return <ShopScreen />;
@@ -373,7 +386,10 @@ export const HUD: React.FC = () => {
 
   if (status === GameStatus.PAUSED) {
       return (
-        <div className="absolute inset-0 bg-black/60 z-[100] text-white pointer-events-auto backdrop-blur-sm flex items-center justify-center">
+        <div 
+            className="absolute inset-0 bg-black/60 z-[100] text-white pointer-events-auto backdrop-blur-sm flex items-center justify-center p-4"
+            style={safePaddingStyle}
+        >
             <div className="flex flex-col items-center p-8 bg-gray-900/90 border border-cyan-500/50 rounded-2xl shadow-[0_0_30px_rgba(0,255,255,0.2)]">
                 <h2 className="text-4xl font-black font-cyber text-cyan-400 mb-8 tracking-widest">SYSTEM PAUSED</h2>
                 <button 
@@ -398,7 +414,10 @@ export const HUD: React.FC = () => {
 
   if (status === GameStatus.MENU) {
       return (
-          <div className="absolute inset-0 flex items-center justify-center z-[100] bg-black/80 backdrop-blur-sm p-4 pointer-events-auto">
+          <div 
+            className="absolute inset-0 flex items-center justify-center z-[100] bg-black/80 backdrop-blur-sm p-4 pointer-events-auto"
+            style={safePaddingStyle}
+          >
               <div className="relative w-full max-w-md rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(0,255,255,0.2)] border border-white/10 animate-in zoom-in-95 duration-500">
                 <div className="relative w-full bg-gray-900 min-h-[500px]">
                      {/* Title Section (Replaces Static Image) */}
@@ -476,8 +495,11 @@ export const HUD: React.FC = () => {
 
   if (status === GameStatus.GAME_OVER) {
       return (
-          <div className="absolute inset-0 bg-black/90 z-[100] text-white pointer-events-auto backdrop-blur-sm overflow-y-auto">
-              <div className="flex flex-col items-center justify-center min-h-full py-8 px-4">
+          <div 
+            className="absolute inset-0 bg-black/90 z-[100] text-white pointer-events-auto backdrop-blur-sm overflow-y-auto p-4"
+            style={safePaddingStyle}
+          >
+              <div className="flex flex-col items-center justify-center min-h-full">
                 <h1 className="text-4xl md:text-6xl font-black text-white mb-6 drop-shadow-[0_0_10px_rgba(255,0,0,0.8)] font-cyber text-center">GAME OVER</h1>
                 
                 <div className="grid grid-cols-1 gap-3 md:gap-4 text-center mb-8 w-full max-w-md">
@@ -500,12 +522,20 @@ export const HUD: React.FC = () => {
                     )}
                 </div>
 
-                <button 
-                  onClick={() => { audio.init(); restartGame(); }}
-                  className="px-8 md:px-10 py-3 md:py-4 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-lg md:text-xl rounded hover:scale-105 transition-all shadow-[0_0_20px_rgba(0,255,255,0.4)]"
-                >
-                    RUN AGAIN
-                </button>
+                <div className="flex flex-col gap-4 w-full max-w-md">
+                    <button 
+                      onClick={() => { audio.init(); restartGame(); }}
+                      className="w-full px-8 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-lg md:text-xl rounded hover:scale-105 transition-all shadow-[0_0_20px_rgba(0,255,255,0.4)] flex items-center justify-center"
+                    >
+                        RUN AGAIN <Play className="ml-2 w-5 h-5" fill="white"/>
+                    </button>
+                    <button 
+                      onClick={() => { audio.init(); goToMenu(); }}
+                      className="w-full px-8 py-3 bg-gray-800 border border-gray-600 text-gray-300 font-bold text-lg md:text-xl rounded hover:bg-gray-700 transition-all flex items-center justify-center"
+                    >
+                        GO HOME <Home className="ml-2 w-5 h-5"/>
+                    </button>
+                </div>
               </div>
           </div>
       );
@@ -513,8 +543,11 @@ export const HUD: React.FC = () => {
 
   if (status === GameStatus.VICTORY) {
     return (
-        <div className="absolute inset-0 bg-gradient-to-b from-purple-900/90 to-black/95 z-[100] text-white pointer-events-auto backdrop-blur-md overflow-y-auto">
-            <div className="flex flex-col items-center justify-center min-h-full py-8 px-4">
+        <div 
+            className="absolute inset-0 bg-gradient-to-b from-purple-900/90 to-black/95 z-[100] text-white pointer-events-auto backdrop-blur-md overflow-y-auto p-4"
+            style={safePaddingStyle}
+        >
+            <div className="flex flex-col items-center justify-center min-h-full">
                 <Rocket className="w-16 h-16 md:w-24 md:h-24 text-yellow-400 mb-4 animate-bounce drop-shadow-[0_0_15px_rgba(255,215,0,0.6)]" />
                 <h1 className="text-3xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-orange-500 to-pink-500 mb-2 drop-shadow-[0_0_20px_rgba(255,165,0,0.6)] font-cyber text-center leading-tight">
                     MISSION COMPLETE
@@ -540,19 +573,27 @@ export const HUD: React.FC = () => {
                      </div>
                 </div>
 
-                <button 
-                  onClick={() => { audio.init(); restartGame(); }}
-                  className="px-8 md:px-12 py-4 md:py-5 bg-white text-black font-black text-lg md:text-xl rounded hover:scale-105 transition-all shadow-[0_0_40px_rgba(255,255,255,0.3)] tracking-widest"
-                >
-                    RESTART MISSION
-                </button>
+                 <div className="flex flex-col gap-4 w-full max-w-md">
+                    <button 
+                      onClick={() => { audio.init(); restartGame(); }}
+                      className="w-full px-8 md:px-12 py-4 md:py-5 bg-white text-black font-black text-lg md:text-xl rounded hover:scale-105 transition-all shadow-[0_0_40px_rgba(255,255,255,0.3)] tracking-widest"
+                    >
+                        RESTART MISSION
+                    </button>
+                    <button 
+                      onClick={() => { audio.init(); goToMenu(); }}
+                      className="w-full px-8 py-4 bg-gray-900 border border-gray-600 text-white font-bold text-lg md:text-xl rounded hover:bg-gray-800 transition-all flex items-center justify-center"
+                    >
+                        GO HOME <Home className="ml-2 w-5 h-5"/>
+                    </button>
+                </div>
             </div>
         </div>
     );
   }
 
   return (
-    <div className={containerClass}>
+    <div className={containerClass} style={safePaddingStyle}>
         <div className="flex justify-between items-start w-full">
             <div className="flex flex-col">
                 <div className="flex items-end">
@@ -595,6 +636,13 @@ export const HUD: React.FC = () => {
              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none z-40">
                 <h1 className="text-5xl md:text-7xl font-black text-yellow-400 font-cyber animate-pulse drop-shadow-[0_0_20px_gold]">FEVER MODE</h1>
                 <p className="text-white text-xl font-mono tracking-widest">HYPERSPEED ENGAGED</p>
+             </div>
+        )}
+
+        {isBonusStage && !isFeverMode && (
+             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none z-40">
+                <h1 className="text-5xl md:text-7xl font-black text-green-400 font-cyber animate-pulse drop-shadow-[0_0_20px_#00ff00]">BONUS STAGE</h1>
+                <p className="text-white text-xl font-mono tracking-widest">NO OBSTACLES - COLLECT ALL!</p>
              </div>
         )}
 

@@ -48,6 +48,113 @@ export class AudioController {
     osc.stop(t + 0.15);
   }
 
+  playPowerUp() {
+    if (!this.ctx || !this.masterGain) this.init();
+    if (!this.ctx || !this.masterGain) return;
+
+    const t = this.ctx.currentTime;
+    
+    // Rapid arpeggio (C Major climb)
+    const freqs = [523.25, 659.25, 783.99, 1046.50];
+    
+    freqs.forEach((f, i) => {
+        const osc = this.ctx!.createOscillator();
+        const gain = this.ctx!.createGain();
+        osc.type = 'square';
+        osc.frequency.value = f;
+        
+        const start = t + (i * 0.05);
+        gain.gain.setValueAtTime(0.1, start);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + 0.1);
+
+        osc.connect(gain);
+        gain.connect(this.masterGain!);
+        osc.start(start);
+        osc.stop(start + 0.1);
+    });
+  }
+
+  playShield() {
+    if (!this.ctx || !this.masterGain) this.init();
+    if (!this.ctx || !this.masterGain) return;
+
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    const lfo = this.ctx.createOscillator();
+
+    // Metallic shimmer sound
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(200, t);
+    osc.frequency.linearRampToValueAtTime(600, t + 0.3);
+
+    // LFO for "wobble"
+    lfo.frequency.value = 20;
+    lfo.connect(gain.gain);
+
+    gain.gain.setValueAtTime(0.3, t);
+    gain.gain.exponentialRampToValueAtTime(0.01, t + 0.4);
+
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+
+    osc.start(t);
+    osc.stop(t + 0.4);
+    lfo.start(t);
+    lfo.stop(t + 0.4);
+  }
+
+  playMagnet() {
+    if (!this.ctx || !this.masterGain) this.init();
+    if (!this.ctx || !this.masterGain) return;
+
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    // Low frequency electric hum
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(110, t); // A2
+    osc.frequency.linearRampToValueAtTime(55, t + 0.5); // Drop down
+
+    gain.gain.setValueAtTime(0.4, t);
+    gain.gain.exponentialRampToValueAtTime(0.01, t + 0.5);
+
+    // Add some distortion/buzz
+    const shaper = this.ctx.createWaveShaper();
+    shaper.curve = new Float32Array([-0.5, 0.5]); // Simple clipping
+    
+    osc.connect(shaper);
+    shaper.connect(gain);
+    gain.connect(this.masterGain);
+
+    osc.start(t);
+    osc.stop(t + 0.5);
+  }
+
+  playLifeUp() {
+    if (!this.ctx || !this.masterGain) this.init();
+    if (!this.ctx || !this.masterGain) return;
+
+    const t = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    // Magical chime (Sine wave high pitch)
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, t);
+    osc.frequency.linearRampToValueAtTime(1760, t + 0.4);
+
+    gain.gain.setValueAtTime(0.4, t);
+    gain.gain.exponentialRampToValueAtTime(0.01, t + 0.6);
+
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+
+    osc.start(t);
+    osc.stop(t + 0.6);
+  }
+
   playLetterCollect() {
     if (!this.ctx || !this.masterGain) this.init();
     if (!this.ctx || !this.masterGain) return;
