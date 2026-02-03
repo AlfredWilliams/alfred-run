@@ -36,10 +36,8 @@ const CameraController = () => {
     const isMobile = aspect < 1.2; 
 
     // Calculate expansion factors
-    // Mobile requires backing up significantly more because vertical FOV is fixed in Three.js,
-    // meaning horizontal view shrinks as aspect ratio drops.
-    const heightFactor = isMobile ? 2.5 : 0.5; // Increased height slightly for better visibility
-    const distFactor = isMobile ? 5.5 : 1.0; // Back up further on mobile
+    const heightFactor = isMobile ? 2.5 : 0.5; 
+    const distFactor = isMobile ? 5.5 : 1.0; 
 
     // Base (3 lanes): y=5.5, z=8
     const extraLanes = Math.max(0, laneCount - 3);
@@ -50,7 +48,6 @@ const CameraController = () => {
     const targetPos = new THREE.Vector3(0, targetY, targetZ);
     
     // Smoothly interpolate camera position
-    // Increased lerp speed for snappier camera feel on mobile
     camera.position.lerp(targetPos, delta * 3.0);
     
     // Apply Shake
@@ -106,10 +103,13 @@ function App() {
     <div className="relative w-full h-[100dvh] bg-black overflow-hidden select-none touch-none">
       <HUD />
       <Canvas
-        // Use BasicShadowMap for high performance on mobile. PCFSoft is too heavy for low-end GPUs.
-        shadows={{ type: isMobile ? THREE.BasicShadowMap : THREE.PCFSoftShadowMap }}
-        // Force dpr to 1 on mobile. 1.5/2.0 kills battery and FPS on cheap phones.
+        // CRITICAL PERFORMANCE FIX: Disable shadows entirely on mobile.
+        // BasicShadowMap is still too expensive for many entry-level phones if casting from 50+ objects.
+        shadows={isMobile ? false : { type: THREE.PCFSoftShadowMap }}
+        
+        // Force dpr to 1 on mobile. Higher DPI kills battery and causes "5 second freeze" due to GPU overload.
         dpr={isMobile ? 1 : [1, 1.5]} 
+        
         gl={{ 
             antialias: false, 
             stencil: false, 

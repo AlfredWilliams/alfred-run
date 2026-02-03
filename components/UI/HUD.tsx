@@ -330,7 +330,6 @@ const BriefingScreen: React.FC = () => {
 }
 
 export const HUD: React.FC = () => {
-  // Use atomic selectors to avoid re-rendering entire HUD on every small state change
   const score = useStore(s => s.score);
   const highScore = useStore(s => s.highScore);
   const lives = useStore(s => s.lives);
@@ -357,7 +356,6 @@ export const HUD: React.FC = () => {
     const handleKeyDown = (e: KeyboardEvent) => {
         if (e.key === 'Escape' || e.key === 'p' || e.key === ' ') {
             if (e.key === ' ') e.preventDefault(); 
-            
             const currentStatus = useStore.getState().status;
             if (currentStatus === GameStatus.PLAYING || currentStatus === GameStatus.PAUSED) {
                 togglePause();
@@ -376,20 +374,12 @@ export const HUD: React.FC = () => {
       paddingRight: 'max(1rem, env(safe-area-inset-right))',
   };
 
-  if (status === GameStatus.SHOP) {
-      return <ShopScreen />;
-  }
-  
-  if (status === GameStatus.BRIEFING) {
-      return <BriefingScreen />;
-  }
+  if (status === GameStatus.SHOP) return <ShopScreen />;
+  if (status === GameStatus.BRIEFING) return <BriefingScreen />;
 
   if (status === GameStatus.PAUSED) {
       return (
-        <div 
-            className="absolute inset-0 bg-black/60 z-[100] text-white pointer-events-auto backdrop-blur-sm flex items-center justify-center p-4"
-            style={safePaddingStyle}
-        >
+        <div className="absolute inset-0 bg-black/60 z-[100] text-white pointer-events-auto backdrop-blur-sm flex items-center justify-center p-4" style={safePaddingStyle}>
             <div className="flex flex-col items-center p-8 bg-gray-900/90 border border-cyan-500/50 rounded-2xl shadow-[0_0_30px_rgba(0,255,255,0.2)]">
                 <h2 className="text-4xl font-black font-cyber text-cyan-400 mb-8 tracking-widest">SYSTEM PAUSED</h2>
                 <button 
@@ -399,10 +389,7 @@ export const HUD: React.FC = () => {
                     <Play className="mr-2 w-5 h-5" fill="black" /> RESUME
                 </button>
                 <button 
-                  onClick={() => {
-                      togglePause(); // Unpause state internally so audio/logic resets cleanly
-                      goToMenu(); 
-                  }}
+                  onClick={() => { togglePause(); goToMenu(); }}
                   className="px-8 py-3 bg-transparent border border-red-500/50 text-red-400 font-bold text-lg rounded hover:bg-red-900/20 transition-all w-full"
                 >
                     ABORT MISSION
@@ -414,51 +401,27 @@ export const HUD: React.FC = () => {
 
   if (status === GameStatus.MENU) {
       return (
-          <div 
-            className="absolute inset-0 flex items-center justify-center z-[100] bg-black/80 backdrop-blur-sm p-4 pointer-events-auto"
-            style={safePaddingStyle}
-          >
+          <div className="absolute inset-0 flex items-center justify-center z-[100] bg-black/80 backdrop-blur-sm p-4 pointer-events-auto" style={safePaddingStyle}>
               <div className="relative w-full max-w-md rounded-3xl overflow-hidden shadow-[0_0_50px_rgba(0,255,255,0.2)] border border-white/10 animate-in zoom-in-95 duration-500">
                 <div className="relative w-full bg-gray-900 min-h-[500px]">
-                     {/* Title Section (Replaces Static Image) */}
                      <div className="w-full h-72 bg-gradient-to-br from-indigo-900 via-purple-900 to-black flex items-center justify-center relative overflow-hidden">
-                        {/* Decorative Grid */}
-                        <div className="absolute inset-0 opacity-20" 
-                             style={{ 
-                                 backgroundImage: 'linear-gradient(0deg, transparent 24%, rgba(0, 255, 255, .3) 25%, rgba(0, 255, 255, .3) 26%, transparent 27%, transparent 74%, rgba(0, 255, 255, .3) 75%, rgba(0, 255, 255, .3) 76%, transparent 77%, transparent), linear-gradient(90deg, transparent 24%, rgba(0, 255, 255, .3) 25%, rgba(0, 255, 255, .3) 26%, transparent 27%, transparent 74%, rgba(0, 255, 255, .3) 75%, rgba(0, 255, 255, .3) 76%, transparent 77%, transparent)',
-                                 backgroundSize: '50px 50px'
-                             }} 
-                        />
-                        
+                        <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'linear-gradient(0deg, transparent 24%, rgba(0, 255, 255, .3) 25%, rgba(0, 255, 255, .3) 26%, transparent 27%, transparent 74%, rgba(0, 255, 255, .3) 75%, rgba(0, 255, 255, .3) 76%, transparent 77%, transparent), linear-gradient(90deg, transparent 24%, rgba(0, 255, 255, .3) 25%, rgba(0, 255, 255, .3) 26%, transparent 27%, transparent 74%, rgba(0, 255, 255, .3) 75%, rgba(0, 255, 255, .3) 76%, transparent 77%, transparent)', backgroundSize: '50px 50px' }} />
                         <div className="text-center z-10 transform -rotate-3">
-                            <h1 className="text-6xl md:text-7xl font-black italic text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-white to-purple-500 font-cyber tracking-tighter drop-shadow-[0_0_25px_rgba(0,255,255,0.6)] leading-none">
-                                ALFRED
-                            </h1>
-                            <h1 className="text-6xl md:text-7xl font-black italic text-white font-cyber tracking-widest drop-shadow-[0_0_15px_rgba(255,0,255,0.8)] leading-none ml-12">
-                                RUN
-                            </h1>
+                            <h1 className="text-6xl md:text-7xl font-black italic text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-white to-purple-500 font-cyber tracking-tighter drop-shadow-[0_0_25px_rgba(0,255,255,0.6)] leading-none">ALFRED</h1>
+                            <h1 className="text-6xl md:text-7xl font-black italic text-white font-cyber tracking-widest drop-shadow-[0_0_15px_rgba(255,0,255,0.8)] leading-none ml-12">RUN</h1>
                         </div>
                      </div>
-                     
                      <div className="absolute inset-0 bg-gradient-to-t from-[#050011] via-black/40 to-transparent pointer-events-none"></div>
-
                      <div className="absolute inset-0 flex flex-col justify-end items-center p-6 pb-8 text-center z-10">
                         <div className="absolute top-4 right-4 bg-black/60 px-3 py-1 rounded-full border border-yellow-500/30 flex items-center">
                             <Trophy className="w-3 h-3 text-yellow-500 mr-2" />
-                            <span className="text-yellow-400 text-xs font-bold font-mono tracking-wider">
-                                BEST: {highScore.toLocaleString()}
-                            </span>
+                            <span className="text-yellow-400 text-xs font-bold font-mono tracking-wider">BEST: {highScore.toLocaleString()}</span>
                         </div>
-
                         <div className="w-full mb-4">
-                            <label className="block text-cyan-400/80 text-xs font-mono tracking-widest mb-2">
-                                MISSION TARGET PROTOCOL
-                            </label>
+                            <label className="block text-cyan-400/80 text-xs font-mono tracking-widest mb-2">MISSION TARGET PROTOCOL</label>
                             <div className="relative flex items-center justify-center">
                                 <input 
-                                    type="text" 
-                                    maxLength={6}
-                                    value={targetInput}
+                                    type="text" maxLength={6} value={targetInput}
                                     onChange={(e) => setTargetInput(e.target.value.toUpperCase())}
                                     className="w-full bg-black/40 border-2 border-cyan-500/50 rounded-lg py-3 px-4 text-center text-2xl font-black font-cyber text-white placeholder-gray-600 focus:outline-none focus:border-cyan-400 focus:shadow-[0_0_15px_rgba(0,255,255,0.5)] transition-all uppercase"
                                     placeholder="ENTER NAME"
@@ -467,25 +430,14 @@ export const HUD: React.FC = () => {
                             </div>
                             <p className="text-xs text-gray-500 mt-1 font-mono">MAX 6 CHARACTERS</p>
                         </div>
-
                         <button 
-                          onClick={() => { 
-                              audio.init(); 
-                              const wordToUse = targetInput.trim() || 'ALFRED';
-                              setTargetWord(wordToUse);
-                              enterBriefing(); // Go to briefing instead of direct start
-                          }}
+                          onClick={() => { audio.init(); const wordToUse = targetInput.trim() || 'ALFRED'; setTargetWord(wordToUse); enterBriefing(); }}
                           className="w-full group relative px-6 py-4 bg-white/10 backdrop-blur-md border border-white/20 text-white font-black text-xl rounded-xl hover:bg-white/20 transition-all shadow-[0_0_20px_rgba(0,255,255,0.2)] hover:shadow-[0_0_30px_rgba(0,255,255,0.4)] hover:border-cyan-400 overflow-hidden"
                         >
                             <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/40 via-purple-500/40 to-pink-500/40 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700"></div>
-                            <span className="relative z-10 tracking-widest flex items-center justify-center">
-                                INITIALIZE RUN <Play className="ml-2 w-5 h-5 fill-white" />
-                            </span>
+                            <span className="relative z-10 tracking-widest flex items-center justify-center">INITIALIZE RUN <Play className="ml-2 w-5 h-5 fill-white" /></span>
                         </button>
-
-                        <p className="text-cyan-400/60 text-[10px] md:text-xs font-mono mt-3 tracking-wider">
-                            [ ARROWS / SWIPE TO MOVE ]
-                        </p>
+                        <p className="text-cyan-400/60 text-[10px] md:text-xs font-mono mt-3 tracking-wider">[ ARROWS / SWIPE TO MOVE ]</p>
                      </div>
                 </div>
               </div>
@@ -495,13 +447,9 @@ export const HUD: React.FC = () => {
 
   if (status === GameStatus.GAME_OVER) {
       return (
-          <div 
-            className="absolute inset-0 bg-black/90 z-[100] text-white pointer-events-auto backdrop-blur-sm overflow-y-auto p-4"
-            style={safePaddingStyle}
-          >
+          <div className="absolute inset-0 bg-black/90 z-[100] text-white pointer-events-auto backdrop-blur-sm overflow-y-auto p-4" style={safePaddingStyle}>
               <div className="flex flex-col items-center justify-center min-h-full">
                 <h1 className="text-4xl md:text-6xl font-black text-white mb-6 drop-shadow-[0_0_10px_rgba(255,0,0,0.8)] font-cyber text-center">GAME OVER</h1>
-                
                 <div className="grid grid-cols-1 gap-3 md:gap-4 text-center mb-8 w-full max-w-md">
                     <div className="bg-gray-900/80 p-3 md:p-4 rounded-lg border border-gray-700 flex items-center justify-between">
                         <div className="flex items-center text-yellow-400 text-sm md:text-base"><Trophy className="mr-2 w-4 h-4 md:w-5 md:h-5"/> LEVEL</div>
@@ -515,13 +463,8 @@ export const HUD: React.FC = () => {
                         <div className="flex items-center text-white text-sm md:text-base">TOTAL SCORE</div>
                         <div className="text-2xl md:text-3xl font-bold font-cyber text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-orange-500">{score.toLocaleString()}</div>
                     </div>
-                    {score >= highScore && score > 0 && (
-                        <div className="p-2 bg-yellow-500/20 border border-yellow-500/50 rounded text-yellow-300 font-bold animate-pulse">
-                            NEW HIGH SCORE!
-                        </div>
-                    )}
+                    {score >= highScore && score > 0 && <div className="p-2 bg-yellow-500/20 border border-yellow-500/50 rounded text-yellow-300 font-bold animate-pulse">NEW HIGH SCORE!</div>}
                 </div>
-
                 <div className="flex flex-col gap-4 w-full max-w-md">
                     <button 
                       onClick={() => { audio.init(); restartGame(); }}
@@ -543,18 +486,11 @@ export const HUD: React.FC = () => {
 
   if (status === GameStatus.VICTORY) {
     return (
-        <div 
-            className="absolute inset-0 bg-gradient-to-b from-purple-900/90 to-black/95 z-[100] text-white pointer-events-auto backdrop-blur-md overflow-y-auto p-4"
-            style={safePaddingStyle}
-        >
+        <div className="absolute inset-0 bg-gradient-to-b from-purple-900/90 to-black/95 z-[100] text-white pointer-events-auto backdrop-blur-md overflow-y-auto p-4" style={safePaddingStyle}>
             <div className="flex flex-col items-center justify-center min-h-full">
                 <Rocket className="w-16 h-16 md:w-24 md:h-24 text-yellow-400 mb-4 animate-bounce drop-shadow-[0_0_15px_rgba(255,215,0,0.6)]" />
-                <h1 className="text-3xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-orange-500 to-pink-500 mb-2 drop-shadow-[0_0_20px_rgba(255,165,0,0.6)] font-cyber text-center leading-tight">
-                    MISSION COMPLETE
-                </h1>
-                <p className="text-cyan-300 text-sm md:text-2xl font-mono mb-8 tracking-widest text-center">
-                    THE ANSWER TO THE UNIVERSE HAS BEEN FOUND
-                </p>
+                <h1 className="text-3xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-orange-500 to-pink-500 mb-2 drop-shadow-[0_0_20px_rgba(255,165,0,0.6)] font-cyber text-center leading-tight">MISSION COMPLETE</h1>
+                <p className="text-cyan-300 text-sm md:text-2xl font-mono mb-8 tracking-widest text-center">THE ANSWER TO THE UNIVERSE HAS BEEN FOUND</p>
                 
                 <div className="grid grid-cols-1 gap-4 text-center mb-8 w-full max-w-md">
                     <div className="bg-black/60 p-6 rounded-xl border border-yellow-500/30 shadow-[0_0_15px_rgba(255,215,0,0.1)]">
@@ -592,9 +528,14 @@ export const HUD: React.FC = () => {
     );
   }
 
+  // --- TOP HUD BAR ---
+  // Fixes notch overlapping by providing a dedicated background for the safe area
   return (
     <div className={containerClass} style={safePaddingStyle}>
-        <div className="flex justify-between items-start w-full">
+        {/* Top Safe Area Background Bar - Ensures text is readable even if overlapping slightly */}
+        <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-b from-black/80 to-transparent pointer-events-none z-[-1]" />
+
+        <div className="flex justify-between items-start w-full px-4 pt-2">
             <div className="flex flex-col">
                 <div className="flex items-end">
                     <div className="text-3xl md:text-5xl font-bold text-cyan-400 drop-shadow-[0_0_10px_#00ffff] font-cyber">
@@ -610,7 +551,7 @@ export const HUD: React.FC = () => {
             </div>
             
             <div className="flex items-start space-x-4">
-                <div className="flex space-x-1 md:space-x-2">
+                <div className="flex space-x-1 md:space-x-2 pt-1">
                     {[...Array(maxLives)].map((_, i) => (
                         <Heart 
                             key={i} 
@@ -628,7 +569,7 @@ export const HUD: React.FC = () => {
             </div>
         </div>
         
-        <div className="absolute top-5 left-1/2 transform -translate-x-1/2 text-sm md:text-lg text-purple-300 font-bold tracking-wider font-mono bg-black/50 px-3 py-1 rounded-full border border-purple-500/30 backdrop-blur-sm z-50">
+        <div className="absolute top-5 left-1/2 transform -translate-x-1/2 text-sm md:text-lg text-purple-300 font-bold tracking-wider font-mono bg-black/50 px-3 py-1 rounded-full border border-purple-500/30 backdrop-blur-sm z-50 mt-safe">
             LEVEL {level} <span className="text-gray-500 text-xs md:text-sm">/ 3</span>
         </div>
 
@@ -646,7 +587,7 @@ export const HUD: React.FC = () => {
              </div>
         )}
 
-        <div className="absolute top-16 md:top-24 left-1/2 transform -translate-x-1/2 flex space-x-2 md:space-x-3">
+        <div className="absolute top-20 md:top-24 left-1/2 transform -translate-x-1/2 flex space-x-2 md:space-x-3 mt-4">
             {targetWord.map((char, idx) => {
                 const isCollected = collectedLetters.includes(idx);
                 const color = LETTER_COLORS[idx % LETTER_COLORS.length];
@@ -668,7 +609,7 @@ export const HUD: React.FC = () => {
             })}
         </div>
 
-        <div className="w-full flex justify-between items-end">
+        <div className="w-full flex justify-between items-end px-4 pb-4">
              <div className="flex items-center justify-start min-w-[80px]">
                  <AbilityHUD />
              </div>

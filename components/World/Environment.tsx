@@ -15,7 +15,7 @@ const THEMES = [
   // Level 1, 3, 5... (NIGHT / DARK SYNTHWAVE)
   {
     bg: '#050011',
-    fog: '#050011',
+    fog: '#1a0b2e',       // Slightly lighter fog for better visibility
     grid: '#8800ff',      // Deep Purple Grid
     sunTop: '#ffe600',    // Yellow Top
     sunBot: '#ff0077',    // Pink Bottom
@@ -34,7 +34,7 @@ const THEMES = [
 
 const SpeedLines: React.FC = () => {
     const { speed, isFeverMode } = useStore();
-    const count = 40;
+    const count = 30; // Reduced count
     const meshRef = useRef<THREE.InstancedMesh>(null);
     const dummy = useMemo(() => new THREE.Object3D(), []);
     
@@ -99,9 +99,6 @@ const StarField: React.FC<{ count: number }> = ({ count }) => {
     for (let i = 0; i < count; i++) {
       let x = (Math.random() - 0.5) * 400;
       let y = (Math.random() - 0.5) * 200 + 50; // Keep mostly above horizon
-      
-      // Distribute Z randomly along the entire travel path plus buffer
-      // Range: -550 to 100 to ensure full coverage from start
       let z = -550 + Math.random() * 650;
 
       // Exclude stars from the central play area
@@ -129,10 +126,8 @@ const StarField: React.FC<{ count: number }> = ({ count }) => {
         
         // Reset when it passes the camera (z > 100 gives plenty of buffer behind camera)
         if (z > 100) {
-            // Reset far back with a random buffer to prevent "walls" of stars
             z = -550 - Math.random() * 50; 
             
-            // Re-randomize X/Y on respawn with exclusion logic
             let x = (Math.random() - 0.5) * 400;
             let y = (Math.random() - 0.5) * 200 + 50;
             
@@ -160,7 +155,7 @@ const StarField: React.FC<{ count: number }> = ({ count }) => {
         />
       </bufferGeometry>
       <pointsMaterial
-        size={0.5}
+        size={0.7} // Slightly larger stars for mobile visibility
         color="#ffffff"
         transparent
         opacity={0.8}
@@ -172,7 +167,6 @@ const StarField: React.FC<{ count: number }> = ({ count }) => {
 
 const LaneGuides: React.FC = () => {
     const { laneCount, isFeverMode, level } = useStore();
-    // Use the same logic as Environment: Index 0 = Night, Index 1 = Day
     const themeIndex = (level - 1) % 2;
     const isNight = themeIndex === 0;
 
@@ -192,8 +186,8 @@ const LaneGuides: React.FC = () => {
             <mesh position={[0, -0.02, -20]} rotation={[-Math.PI / 2, 0, 0]}>
                 <planeGeometry args={[laneCount * LANE_WIDTH, 200]} />
                 <meshBasicMaterial 
-                  // In Day mode (themeIndex 1), use a darker, contrasting floor color
-                  color={isFeverMode ? "#443300" : isNight ? "#1a0b2e" : "#1a0530"} 
+                  // Brighter floor for visibility
+                  color={isFeverMode ? "#664400" : isNight ? "#2a1b3e" : "#2a1540"} 
                   transparent opacity={0.9} 
                 />
             </mesh>
@@ -218,25 +212,18 @@ const RetroSun: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
     const sunGroupRef = useRef<THREE.Group>(null);
     const { isFeverMode, level } = useStore();
 
-    // Determine target colors based on level
     const themeIndex = (level - 1) % 2;
     const theme = THEMES[themeIndex];
-
-    // Reduce segments for mobile
     const segments = isMobile ? 16 : 32;
 
     useFrame((state) => {
         if (matRef.current) {
             matRef.current.uniforms.uTime.value = state.clock.elapsedTime;
-            
-            // Lerp Colors based on fever mode or level
             const targetTop = new THREE.Color(isFeverMode ? '#ffffff' : theme.sunTop);
             const targetBottom = new THREE.Color(isFeverMode ? '#ffaa00' : theme.sunBot);
-            
             matRef.current.uniforms.uColorTop.value.lerp(targetTop, 0.05);
             matRef.current.uniforms.uColorBottom.value.lerp(targetBottom, 0.05);
         }
-        // Gentle bobbing
         if (sunGroupRef.current) {
             sunGroupRef.current.position.y = 30 + Math.sin(state.clock.elapsedTime * 0.2) * 1.0;
             sunGroupRef.current.rotation.y = state.clock.elapsedTime * 0.05;
@@ -259,7 +246,6 @@ const RetroSun: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                     transparent
                     vertexShader={`
                         varying vec2 vUv;
-
                         void main() {
                             vUv = uv;
                             gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
@@ -270,7 +256,6 @@ const RetroSun: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                         uniform float uTime;
                         uniform vec3 uColorTop;
                         uniform vec3 uColorBottom;
-
                         void main() {
                             vec3 color = mix(uColorBottom, uColorTop, vUv.y);
                             float stripeFreq = 40.0;
@@ -293,7 +278,6 @@ const MovingGrid: React.FC = () => {
     const meshRef = useRef<THREE.Mesh>(null);
     const offsetRef = useRef(0);
     
-    // Theme
     const themeIndex = (level - 1) % 2;
     const theme = THEMES[themeIndex];
     
@@ -332,14 +316,16 @@ export const Environment: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
   return (
     <>
       <color attach="background" args={[theme.bg]} />
-      <fog attach="fog" args={[theme.fog, 40, 160]} />
+      {/* Fog reduced to allow better visibility in distance */}
+      <fog attach="fog" args={[theme.fog, 60, 200]} />
       
-      <ambientLight intensity={0.4} color={theme.bg} />
-      <directionalLight position={[0, 20, -10]} intensity={1.2} color={theme.light} />
-      <pointLight position={[0, 25, -150]} intensity={2} color={theme.sunBot} distance={200} decay={2} />
+      {/* Significantly Increased Lighting for Mobile Visibility */}
+      <ambientLight intensity={1.0} color={theme.bg} />
+      <directionalLight position={[0, 20, -10]} intensity={2.5} color={theme.light} />
+      <pointLight position={[0, 25, -150]} intensity={3} color={theme.sunBot} distance={200} decay={2} />
       
-      {/* Significantly reduce star count on mobile for performance */}
-      <StarField count={isMobile ? 800 : 3000} />
+      {/* Reduce star count for performance */}
+      <StarField count={isMobile ? 500 : 2500} />
       <MovingGrid />
       <LaneGuides />
       <SpeedLines />

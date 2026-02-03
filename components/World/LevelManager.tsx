@@ -4,7 +4,7 @@
 */
 
 import React, { useRef, useEffect, useState, useMemo } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Text3D, Center } from '@react-three/drei';
 import { v4 as uuidv4 } from 'uuid';
@@ -19,7 +19,6 @@ import {
 import { audio } from '../System/Audio';
 
 // --- Instantiated Resources (Performance) ---
-// Defining these outside the component ensures they are created only once
 const FONT_URL = "https://cdn.jsdelivr.net/npm/three/examples/fonts/helvetiker_bold.typeface.json";
 
 const MATERIALS = {
@@ -98,7 +97,8 @@ const _bulletDummy = new THREE.Object3D();
 
 // --- Particle System Component ---
 const ParticleSystem: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
-    const count = isMobile ? 100 : 400;
+    // Reduced particle count for mobile stability
+    const count = isMobile ? 80 : 300;
     const mesh = useRef<THREE.InstancedMesh>(null);
     const dummy = useMemo(() => new THREE.Object3D(), []);
     
@@ -115,7 +115,7 @@ const ParticleSystem: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
         const handleExplosion = (e: CustomEvent) => {
             const { position, color } = e.detail;
             let spawned = 0;
-            const burstAmount = isMobile ? 10 : 30; 
+            const burstAmount = isMobile ? 8 : 25; 
 
             for(let i = 0; i < count; i++) {
                 const p = particles[i];
@@ -173,7 +173,6 @@ const ParticleSystem: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                 mesh.current.setColorAt(i, p.color);
                 activeCount++;
             } else {
-                // Hide inactive
                 dummy.scale.set(0,0,0);
                 dummy.updateMatrix();
                 mesh.current.setMatrixAt(i, dummy.matrix);
@@ -202,19 +201,16 @@ export const LevelManager: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
   const level = useStore(s => s.level);
   const status = useStore(s => s.status);
 
-  // Mutable refs for game loop state (avoids React re-renders)
+  // Use refs for game loop state
   const objectsRef = useRef<GameObject[]>([]);
   const bulletsRef = useRef<BulletData[]>([]);
   const bulletMeshRef = useRef<THREE.InstancedMesh>(null);
-  
-  // Triggers re-render of React components (GameEntity) only when object list *structure* changes
   const [renderTrigger, setRenderTrigger] = useState(0);
   
   const prevStatus = useRef(status);
   const prevLevel = useRef(level);
   const playerObjRef = useRef<THREE.Object3D | null>(null);
   
-  // Logic Timers
   const distanceTraveled = useRef(0);
   const nextLetterDistance = useRef(150);
   const playTimeRef = useRef(0);
@@ -222,7 +218,9 @@ export const LevelManager: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
   const timeSinceLastLifeRef = useRef(0);
   const lastShotTime = useRef(0);
 
-  // --- Reset & Transition Logic ---
+  // Reduce spawn distance on mobile to prevent memory crash (80 vs 120)
+  const SPAWN_DIST = isMobile ? 80 : 120;
+
   useEffect(() => {
     const isRestart = status === GameStatus.PLAYING && prevStatus.current === GameStatus.GAME_OVER;
     const isMenuReset = status === GameStatus.MENU;
@@ -243,7 +241,6 @@ export const LevelManager: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
         useStore.getState().setDistance(0);
 
     } else if (isLevelUp && level > 1) {
-        // Clear obstacles nearby, spawn shop
         objectsRef.current = objectsRef.current.filter(obj => obj.position[2] > -80);
         objectsRef.current.push({
             id: uuidv4(),
@@ -251,15 +248,14 @@ export const LevelManager: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
             position: [0, 0, -100], 
             active: true,
         });
-        nextLetterDistance.current = distanceTraveled.current - GameConfig.SPAWN_DISTANCE + getLetterInterval(level);
+        nextLetterDistance.current = distanceTraveled.current - SPAWN_DIST + getLetterInterval(level);
         setRenderTrigger(t => t + 1);
     }
     
     prevStatus.current = status;
     prevLevel.current = level;
-  }, [status, level]);
+  }, [status, level, SPAWN_DIST]);
 
-  // Capture Player Object reference once
   useFrame((state) => {
       if (!playerObjRef.current) {
           const group = state.scene.getObjectByName('PlayerGroup');
@@ -269,7 +265,6 @@ export const LevelManager: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
       }
   });
 
-  // --- MAIN GAME LOOP ---
   useFrame((state, delta) => {
     const gameState = useStore.getState();
     if (gameState.status !== GameStatus.PLAYING) return;
@@ -278,7 +273,6 @@ export const LevelManager: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
     playTimeRef.current += safeDelta;
     timeSinceLastLifeRef.current += safeDelta;
 
-    // Apply speed boost after 30s
     if (playTimeRef.current > 30 && !hasSpeedBoostedRef.current) {
         gameState.applyTimeSpeedBoost();
         hasSpeedBoostedRef.current = true;
@@ -295,7 +289,7 @@ export const LevelManager: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
     }
     const playerPos = _tempVec;
 
-    // 1. Process Player Bullets
+    // Bullet Logic
     if (gameState.isShootingActive && state.clock.elapsedTime - lastShotTime.current > 0.12) {
         lastShotTime.current = state.clock.elapsedTime;
         bulletsRef.current.push({
@@ -311,15 +305,12 @@ export const LevelManager: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
     for (let i = 0; i < bullets.length; i++) {
         const b = bullets[i];
         if (!b.active) continue;
-
-        b.position.z -= 60 * safeDelta; // Bullet speed
-
-        if (b.position.z < -GameConfig.SPAWN_DISTANCE - 50) {
+        b.position.z -= 60 * safeDelta;
+        if (b.position.z < -SPAWN_DIST - 50) {
             b.active = false;
             continue;
         }
 
-        // Bullet Collision
         for (const target of objectsRef.current) {
             if (!target.active) continue;
             const isDestructible = [ObjectType.OBSTACLE, ObjectType.ALIEN, ObjectType.DRONE, ObjectType.MISSILE].includes(target.type);
@@ -339,7 +330,6 @@ export const LevelManager: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                  }
             }
         }
-
         if (b.active && bulletMeshRef.current) {
             _bulletDummy.position.copy(b.position);
             _bulletDummy.scale.setScalar(1.0);
@@ -348,27 +338,24 @@ export const LevelManager: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
             activeBulletCount++;
         }
     }
-
     if (bulletMeshRef.current) {
         bulletMeshRef.current.count = activeBulletCount;
         bulletMeshRef.current.instanceMatrix.needsUpdate = true;
     }
     if (bullets.length > 60) bulletsRef.current = bullets.filter(b => b.active);
 
-    // 2. Process World Objects
+    // Object Loop
     const currentObjects = objectsRef.current;
     const keptObjects: GameObject[] = [];
     const newSpawns: GameObject[] = [];
 
     for (const obj of currentObjects) {
-        // Move Object
         let moveAmount = dist;
         if (obj.type === ObjectType.MISSILE) moveAmount += 30 * safeDelta;
         
         const prevZ = obj.position[2];
         obj.position[2] += moveAmount;
 
-        // Magnet Logic
         const isMagnetic = [ObjectType.GEM, ObjectType.LETTER, ObjectType.HEART, ObjectType.BULLET].includes(obj.type);
         if (gameState.isMagnetActive && obj.active && isMagnetic) {
             const dx = playerPos.x - obj.position[0];
@@ -379,14 +366,12 @@ export const LevelManager: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
             }
         }
         
-        // Drone Animation Logic
         if (obj.type === ObjectType.DRONE) {
              const t = state.clock.elapsedTime * 2 + (obj.laneOffset || 0);
              const amplitude = (laneCount * GameConfig.LANE_WIDTH) / 2;
              obj.position[0] = Math.sin(t) * amplitude;
         }
         
-        // Alien Shooting Logic
         if (obj.type === ObjectType.ALIEN && obj.active && !obj.hasFired && obj.position[2] > -90) {
              obj.hasFired = true;
              newSpawns.push({
@@ -400,20 +385,17 @@ export const LevelManager: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
              window.dispatchEvent(new CustomEvent('particle-burst', { detail: { position: obj.position, color: '#ff00ff' } }));
         }
 
-        // Collision & Removal
         let keep = true;
         if (obj.active) {
             const zThreshold = 2.0; 
             const inZZone = (prevZ < playerPos.z + zThreshold) && (obj.position[2] > playerPos.z - zThreshold);
             
-            // Shop
             if (obj.type === ObjectType.SHOP_PORTAL && Math.abs(obj.position[2] - playerPos.z) < 2) {
                  gameState.openShop();
                  obj.active = false;
                  hasChanges = true;
                  keep = false; 
             } 
-            // Standard Collision
             else if (inZZone) {
                 const dx = Math.abs(obj.position[0] - playerPos.x);
                 if (dx < 0.9) { 
@@ -422,8 +404,6 @@ export const LevelManager: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                          const playerTop = playerPos.y + 1.8; 
                          let objTop = obj.position[1] + 0.5;
                          let objBottom = obj.position[1] - 0.5;
-                         
-                         // Height adjustments
                          if (obj.type === ObjectType.OBSTACLE) { objBottom = 0; objTop = 1.6; }
                          if (obj.type === ObjectType.MISSILE) { objBottom = 0.5; objTop = 1.5; }
 
@@ -438,7 +418,6 @@ export const LevelManager: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                      } else {
                          const dy = Math.abs(obj.position[1] - playerPos.y);
                          if (dy < 2.5) { 
-                            // Collection Logic
                             switch(obj.type) {
                                 case ObjectType.GEM: gameState.collectGem(obj.points || 50); audio.playGemCollect(); break;
                                 case ObjectType.LETTER: if(obj.targetIndex !== undefined) { gameState.collectLetter(obj.targetIndex); audio.playLetterCollect(); } break;
@@ -450,7 +429,6 @@ export const LevelManager: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                                 case ObjectType.JUMP_BOOTS: gameState.activateJumpBoots(); audio.playPowerUp(); break;
                                 case ObjectType.BULLET: gameState.activateShooting(); audio.playPowerUp(); break;
                             }
-                            
                             window.dispatchEvent(new CustomEvent('particle-burst', { detail: { position: obj.position, color: obj.color || '#ffffff' } }));
                             obj.active = false;
                             hasChanges = true;
@@ -470,24 +448,22 @@ export const LevelManager: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
 
     if (newSpawns.length > 0) keptObjects.push(...newSpawns);
 
-    // 3. Spawning Logic
+    // Spawning
     const staticObjects = keptObjects.filter(o => o.type !== ObjectType.MISSILE && o.type !== ObjectType.DRONE);
     const furthestZ = staticObjects.length > 0 ? Math.min(...staticObjects.map(o => o.position[2])) : -20;
 
-    if (furthestZ > -GameConfig.SPAWN_DISTANCE) {
-         const spawnZ = Math.min(furthestZ - (12 + (gameState.speed * 0.4)), -GameConfig.SPAWN_DISTANCE);
+    if (furthestZ > -SPAWN_DIST) {
+         const spawnZ = Math.min(furthestZ - (12 + (gameState.speed * 0.4)), -SPAWN_DIST);
 
-         // --- MODE SPAWNING ---
          if (gameState.isBonusStage) {
-            // Infinite Loot until word completed
             const rand = Math.random();
             const maxLane = Math.floor(laneCount / 2);
             
-            if (rand < 0.25) { // Gem Row
+            if (rand < 0.25) { 
                 for (let i = -maxLane; i <= maxLane; i++) {
                     keptObjects.push({ id: uuidv4(), type: ObjectType.GEM, position: [i * GameConfig.LANE_WIDTH, 1.2, spawnZ], active: true, color: '#ffd700', points: 100 });
                 }
-            } else if (rand < 0.45) { // Letter Opportunity
+            } else if (rand < 0.45) { 
                  const target = gameState.targetWord;
                  const availableIndices = target.map((_, i) => i).filter(i => !gameState.collectedLetters.includes(i));
                  if (availableIndices.length > 0) {
@@ -497,19 +473,18 @@ export const LevelManager: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                         active: true, color: LETTER_COLORS[chosenIndex % LETTER_COLORS.length], value: target[chosenIndex], targetIndex: chosenIndex
                      });
                  }
-            } else if (rand < 0.6) { // Powerups
+            } else if (rand < 0.6) {
                  const lane = getRandomLane(laneCount);
                  const pType = Math.random();
                  if (pType < 0.33) keptObjects.push({ id: uuidv4(), type: ObjectType.MAGNET, position: [lane * GameConfig.LANE_WIDTH, 1.0, spawnZ], active: true });
                  else if (pType < 0.66) keptObjects.push({ id: uuidv4(), type: ObjectType.SHIELD, position: [lane * GameConfig.LANE_WIDTH, 1.0, spawnZ], active: true });
                  else keptObjects.push({ id: uuidv4(), type: ObjectType.MYSTERY_BOX, position: [lane * GameConfig.LANE_WIDTH, 1.0, spawnZ], active: true });
-            } else { // Fillers
+            } else {
                 keptObjects.push({ id: uuidv4(), type: ObjectType.GEM, position: [getRandomLane(laneCount) * GameConfig.LANE_WIDTH, 1.2, spawnZ], active: true, color: '#00ffff', points: 50 });
             }
             hasChanges = true;
          } 
          else if (gameState.isFeverMode) {
-            // Gold Rush
             const maxLane = Math.floor(laneCount / 2);
             for (let i = -maxLane; i <= maxLane; i++) {
                 keptObjects.push({ id: uuidv4(), type: ObjectType.GEM, position: [i * GameConfig.LANE_WIDTH, 1.2, spawnZ], active: true, color: '#ffd700', points: 100 });
@@ -517,7 +492,6 @@ export const LevelManager: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
             hasChanges = true;
          } 
          else {
-             // Standard Gameplay
              if (timeSinceLastLifeRef.current > 70) {
                  keptObjects.push({ id: uuidv4(), type: ObjectType.HEART, position: [getRandomLane(laneCount) * GameConfig.LANE_WIDTH, 1.2, spawnZ], active: true, color: '#ff0000' });
                  timeSinceLastLifeRef.current = 0;
@@ -541,10 +515,9 @@ export const LevelManager: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                      }
                  } else if (Math.random() > 0.1) { 
                     const rand = Math.random();
-                    // Probability weights
-                    if (rand < 0.15 && level > 1) { // Drones
+                    if (rand < 0.15 && level > 1) { 
                          keptObjects.push({ id: uuidv4(), type: ObjectType.DRONE, position: [0, 1.0, spawnZ], active: true, color: '#ff0000', laneOffset: Math.random() * 10 });
-                    } else if (rand > 0.90) { // Powerups
+                    } else if (rand > 0.90) { 
                          const lane = getRandomLane(laneCount);
                          const subRand = Math.random();
                          if (subRand < 0.2) keptObjects.push({ id: uuidv4(), type: ObjectType.MAGNET, position: [lane * GameConfig.LANE_WIDTH, 1.0, spawnZ], active: true });
@@ -552,7 +525,7 @@ export const LevelManager: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
                          else if (subRand < 0.6) keptObjects.push({ id: uuidv4(), type: ObjectType.SHIELD, position: [lane * GameConfig.LANE_WIDTH, 1.0, spawnZ], active: true });
                          else if (subRand < 0.8) keptObjects.push({ id: uuidv4(), type: ObjectType.BULLET, position: [lane * GameConfig.LANE_WIDTH, 1.0, spawnZ], active: true, color: '#ffaa00' });
                          else keptObjects.push({ id: uuidv4(), type: ObjectType.JUMP_BOOTS, position: [lane * GameConfig.LANE_WIDTH, 1.0, spawnZ], active: true });
-                    } else { // Obstacles & Aliens
+                    } else {
                         const isObstacle = Math.random() > 0.20;
                         if (isObstacle) {
                             if (level >= 2 && Math.random() < 0.2) {
@@ -582,13 +555,13 @@ export const LevelManager: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
     <group>
       <ParticleSystem isMobile={isMobile} />
       <instancedMesh ref={bulletMeshRef} args={[GEOMETRIES.PLAYER_BULLET, MATERIALS.PLAYER_BULLET, 100]} />
-      {objectsRef.current.map(obj => obj.active ? <GameEntity key={obj.id} data={obj} /> : null)}
+      {objectsRef.current.map(obj => obj.active ? <GameEntity key={obj.id} data={obj} isMobile={isMobile} /> : null)}
     </group>
   );
 };
 
 // --- Pure Render Component ---
-const GameEntity: React.FC<{ data: GameObject }> = React.memo(({ data }) => {
+const GameEntity: React.FC<{ data: GameObject, isMobile: boolean }> = React.memo(({ data, isMobile }) => {
     const groupRef = useRef<THREE.Group>(null);
     const visualRef = useRef<THREE.Group>(null);
     const shadowRef = useRef<THREE.Mesh>(null);
@@ -615,7 +588,6 @@ const GameEntity: React.FC<{ data: GameObject }> = React.memo(({ data }) => {
         }
     });
 
-    // Shadow Selection
     const shadowGeo = useMemo(() => {
         switch(data.type) {
             case ObjectType.LETTER: return GEOMETRIES.SHADOW_LETTER;
@@ -628,7 +600,8 @@ const GameEntity: React.FC<{ data: GameObject }> = React.memo(({ data }) => {
 
     return (
         <group ref={groupRef} position={[data.position[0], 0, data.position[2]]}>
-            {shadowGeo && <mesh ref={shadowRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]} geometry={shadowGeo} material={MATERIALS.SHADOW} />}
+            {/* Disable shadows on mobile objects to save draw calls if not using shadows anyway */}
+            {shadowGeo && !isMobile && <mesh ref={shadowRef} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]} geometry={shadowGeo} material={MATERIALS.SHADOW} />}
             <group ref={visualRef} position={[0, data.position[1], 0]}>
                 {data.type === ObjectType.SHOP_PORTAL && (
                     <group>
@@ -636,7 +609,7 @@ const GameEntity: React.FC<{ data: GameObject }> = React.memo(({ data }) => {
                          <mesh position={[0, 2, 0]} geometry={GEOMETRIES.SHOP_BACK} scale={[laneCount * GameConfig.LANE_WIDTH, 1, 1]} material={MATERIALS.SHOP_BACK} />
                          <mesh position={[0, 3, 0]} geometry={GEOMETRIES.SHOP_OUTLINE} scale={[laneCount * GameConfig.LANE_WIDTH + 2.2, 1, 1]} material={MATERIALS.SHOP_OUTLINE} />
                          <Center position={[0, 5, 0.6]}>
-                             <Text3D font={FONT_URL} size={1.2} height={0.2} curveSegments={2} bevelSegments={0}>
+                             <Text3D font={FONT_URL} size={1.2} height={0.2} curveSegments={isMobile ? 1 : 2} bevelSegments={0}>
                                  CYBER SHOP
                                  <meshBasicMaterial color="#ffff00" />
                              </Text3D>
@@ -646,7 +619,7 @@ const GameEntity: React.FC<{ data: GameObject }> = React.memo(({ data }) => {
                 )}
                 {data.type === ObjectType.OBSTACLE && (
                     <group>
-                        <mesh geometry={GEOMETRIES.OBSTACLE} castShadow receiveShadow material={MATERIALS.OBSTACLE} />
+                        <mesh geometry={GEOMETRIES.OBSTACLE} castShadow={!isMobile} receiveShadow={!isMobile} material={MATERIALS.OBSTACLE} />
                         <mesh scale={[1.02, 1.02, 1.02]} geometry={GEOMETRIES.OBSTACLE} material={MATERIALS.GLOW_WIRE}>
                              <meshBasicMaterial color={data.color} wireframe transparent opacity={0.3} />
                         </mesh>
@@ -657,7 +630,7 @@ const GameEntity: React.FC<{ data: GameObject }> = React.memo(({ data }) => {
                 )}
                 {data.type === ObjectType.ALIEN && (
                     <group>
-                        <mesh castShadow geometry={GEOMETRIES.ALIEN_BODY} material={MATERIALS.ALIEN_BODY} />
+                        <mesh castShadow={!isMobile} geometry={GEOMETRIES.ALIEN_BODY} material={MATERIALS.ALIEN_BODY} />
                         <mesh position={[0, 0.2, 0]} geometry={GEOMETRIES.ALIEN_DOME} material={MATERIALS.ALIEN_DOME} />
                         <mesh position={[0.3, 0, 0.3]} geometry={GEOMETRIES.ALIEN_EYE} material={MATERIALS.WHITE_BASIC} />
                         <mesh position={[-0.3, 0, 0.3]} geometry={GEOMETRIES.ALIEN_EYE} material={MATERIALS.WHITE_BASIC} />
@@ -671,7 +644,7 @@ const GameEntity: React.FC<{ data: GameObject }> = React.memo(({ data }) => {
                 )}
                 {data.type === ObjectType.DRONE && (
                     <group>
-                        <mesh geometry={GEOMETRIES.DRONE} material={MATERIALS.DRONE_BODY} castShadow />
+                        <mesh geometry={GEOMETRIES.DRONE} material={MATERIALS.DRONE_BODY} castShadow={!isMobile} />
                         <mesh geometry={GEOMETRIES.DRONE_SPIKE} position={[0.5, 0, 0]} rotation={[0, 0, -Math.PI/2]} material={MATERIALS.DRONE_LIGHT} />
                         <mesh geometry={GEOMETRIES.DRONE_SPIKE} position={[-0.5, 0, 0]} rotation={[0, 0, Math.PI/2]} material={MATERIALS.DRONE_LIGHT} />
                     </group>
@@ -680,7 +653,7 @@ const GameEntity: React.FC<{ data: GameObject }> = React.memo(({ data }) => {
                     <group>
                         <mesh geometry={GEOMETRIES.GIFT} material={MATERIALS.GIFT} />
                         <Center position={[0, 0, 0.31]}>
-                             <Text3D font={FONT_URL} size={0.4} height={0.05} curveSegments={2} bevelSegments={0}>? <meshBasicMaterial color="#ffffff" /></Text3D>
+                             <Text3D font={FONT_URL} size={0.4} height={0.05} curveSegments={isMobile ? 1 : 2} bevelSegments={0}>? <meshBasicMaterial color="#ffffff" /></Text3D>
                         </Center>
                     </group>
                 )}
@@ -706,7 +679,8 @@ const GameEntity: React.FC<{ data: GameObject }> = React.memo(({ data }) => {
                 {data.type === ObjectType.LETTER && (
                     <group scale={[1.5, 1.5, 1.5]}>
                          <Center>
-                             <Text3D font={FONT_URL} size={0.8} height={0.5} bevelEnabled bevelThickness={0.02} bevelSize={0.02}>
+                             {/* HEAVY OPTIMIZATION: Reduce segments for mobile to prevent freezing during word spawn */}
+                             <Text3D font={FONT_URL} size={0.8} height={0.5} bevelEnabled={!isMobile} bevelThickness={0.02} bevelSize={0.02} curveSegments={isMobile ? 1 : 2}>
                                 {data.value}
                                 <meshStandardMaterial color={data.color} emissive={data.color} emissiveIntensity={1.5} />
                              </Text3D>
@@ -717,5 +691,3 @@ const GameEntity: React.FC<{ data: GameObject }> = React.memo(({ data }) => {
         </group>
     );
 });
-
-// --- Particle System ---
