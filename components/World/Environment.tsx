@@ -4,11 +4,33 @@
 */
 
 
-import React, { useRef, useMemo } from 'react';
+import React, { useRef, useMemo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useStore } from '../../store';
 import { LANE_WIDTH } from '../../types';
+
+// Theme Configuration
+const THEMES = [
+  // Level 1, 3, 5... (NIGHT / DARK SYNTHWAVE)
+  {
+    bg: '#050011',
+    fog: '#050011',
+    grid: '#8800ff',      // Deep Purple Grid
+    sunTop: '#ffe600',    // Yellow Top
+    sunBot: '#ff0077',    // Pink Bottom
+    light: '#00ffff'      // Cyan Light
+  },
+  // Level 2, 4, 6... (DAY / BRIGHT CYBER SUNRISE)
+  {
+    bg: '#1a0b2e',        // Lighter Purple/Blue base
+    fog: '#ff9e42',       // Bright Orange Fog (Sunrise look)
+    grid: '#00ffff',      // Bright Cyan Grid (High contrast)
+    sunTop: '#ffffff',    // White Hot Sun
+    sunBot: '#ff00ff',    // Magenta Sun Bottom
+    light: '#ffaa00'      // Warm Sunlight
+  }
+];
 
 const StarField: React.FC<{ count: number }> = ({ count }) => {
   const speed = useStore(state => state.speed);
@@ -91,8 +113,11 @@ const StarField: React.FC<{ count: number }> = ({ count }) => {
 };
 
 const LaneGuides: React.FC = () => {
-    const { laneCount, isFeverMode } = useStore();
-    
+    const { laneCount, isFeverMode, level } = useStore();
+    // Use the same logic as Environment: Index 0 = Night, Index 1 = Day
+    const themeIndex = (level - 1) % 2;
+    const isNight = themeIndex === 0;
+
     const separators = useMemo(() => {
         const lines: number[] = [];
         const startX = -(laneCount * LANE_WIDTH) / 2;
@@ -108,7 +133,11 @@ const LaneGuides: React.FC = () => {
             {/* Lane Floor - Lowered slightly to -0.02 */}
             <mesh position={[0, -0.02, -20]} rotation={[-Math.PI / 2, 0, 0]}>
                 <planeGeometry args={[laneCount * LANE_WIDTH, 200]} />
-                <meshBasicMaterial color={isFeverMode ? "#443300" : "#1a0b2e"} transparent opacity={0.9} />
+                <meshBasicMaterial 
+                  // In Day mode (themeIndex 1), use a brighter floor color
+                  color={isFeverMode ? "#443300" : isNight ? "#1a0b2e" : "#2a1b4e"} 
+                  transparent opacity={0.9} 
+                />
             </mesh>
 
             {/* Lane Separators - Glowing Lines */}
@@ -116,7 +145,7 @@ const LaneGuides: React.FC = () => {
                 <mesh key={`sep-${i}`} position={[x, 0, -20]} rotation={[-Math.PI / 2, 0, 0]}>
                     <planeGeometry args={[0.05, 200]} /> 
                     <meshBasicMaterial 
-                        color={isFeverMode ? "#ffcc00" : "#00ffff"} 
+                        color={isFeverMode ? "#ffcc00" : isNight ? "#00ffff" : "#ff00ff"} 
                         transparent 
                         opacity={0.4} 
                     />
@@ -129,7 +158,11 @@ const LaneGuides: React.FC = () => {
 const RetroSun: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
     const matRef = useRef<THREE.ShaderMaterial>(null);
     const sunGroupRef = useRef<THREE.Group>(null);
-    const { isFeverMode } = useStore();
+    const { isFeverMode, level } = useStore();
+
+    // Determine target colors based on level
+    const themeIndex = (level - 1) % 2;
+    const theme = THEMES[themeIndex];
 
     // Reduce segments for mobile
     const segments = isMobile ? 16 : 32;
@@ -138,9 +171,9 @@ const RetroSun: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
         if (matRef.current) {
             matRef.current.uniforms.uTime.value = state.clock.elapsedTime;
             
-            // Lerp Colors based on fever mode
-            const targetTop = isFeverMode ? new THREE.Color('#ffffff') : new THREE.Color('#ffe600');
-            const targetBottom = isFeverMode ? new THREE.Color('#ffaa00') : new THREE.Color('#ff0077');
+            // Lerp Colors based on fever mode or level
+            const targetTop = new THREE.Color(isFeverMode ? '#ffffff' : theme.sunTop);
+            const targetBottom = new THREE.Color(isFeverMode ? '#ffaa00' : theme.sunBot);
             
             matRef.current.uniforms.uColorTop.value.lerp(targetTop, 0.05);
             matRef.current.uniforms.uColorBottom.value.lerp(targetBottom, 0.05);
@@ -198,9 +231,13 @@ const RetroSun: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
 };
 
 const MovingGrid: React.FC = () => {
-    const { speed, isFeverMode } = useStore();
+    const { speed, isFeverMode, level } = useStore();
     const meshRef = useRef<THREE.Mesh>(null);
     const offsetRef = useRef(0);
+    
+    // Theme
+    const themeIndex = (level - 1) % 2;
+    const theme = THEMES[themeIndex];
     
     useFrame((state, delta) => {
         if (meshRef.current) {
@@ -209,8 +246,9 @@ const MovingGrid: React.FC = () => {
              const cellSize = 10;
              const zPos = -100 + (offsetRef.current % cellSize);
              meshRef.current.position.z = zPos;
+             
              const mat = meshRef.current.material as THREE.MeshBasicMaterial;
-             const targetColor = isFeverMode ? new THREE.Color('#ffaa00') : new THREE.Color('#8800ff');
+             const targetColor = new THREE.Color(isFeverMode ? '#ffaa00' : theme.grid);
              mat.color.lerp(targetColor, 0.05);
         }
     });
@@ -229,14 +267,18 @@ const MovingGrid: React.FC = () => {
 };
 
 export const Environment: React.FC<{ isMobile: boolean }> = ({ isMobile }) => {
+  const level = useStore(s => s.level);
+  const themeIndex = (level - 1) % 2;
+  const theme = THEMES[themeIndex];
+
   return (
     <>
-      <color attach="background" args={['#050011']} />
-      <fog attach="fog" args={['#050011', 40, 160]} />
+      <color attach="background" args={[theme.bg]} />
+      <fog attach="fog" args={[theme.fog, 40, 160]} />
       
       <ambientLight intensity={0.2} color="#400080" />
-      <directionalLight position={[0, 20, -10]} intensity={1.5} color="#00ffff" />
-      <pointLight position={[0, 25, -150]} intensity={2} color="#ff00aa" distance={200} decay={2} />
+      <directionalLight position={[0, 20, -10]} intensity={1.5} color={theme.light} />
+      <pointLight position={[0, 25, -150]} intensity={2} color={theme.sunBot} distance={200} decay={2} />
       
       {/* Significantly reduce star count on mobile for performance */}
       <StarField count={isMobile ? 800 : 3000} />

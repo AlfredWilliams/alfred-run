@@ -27,7 +27,9 @@ export enum ObjectType {
   MYSTERY_BOX = 'MYSTERY_BOX',
   INVINCIBILITY = 'INVINCIBILITY', // The Vest
   JUMP_BOOTS = 'JUMP_BOOTS',
-  SHIELD = 'SHIELD'
+  SHIELD = 'SHIELD',
+  BULLET = 'BULLET', // The pickup item
+  PLAYER_BULLET = 'PLAYER_BULLET' // The actual projectile
 }
 
 export interface GameObject {
@@ -50,11 +52,13 @@ export const RUN_SPEED_BASE = 22.5;
 export const SPAWN_DISTANCE = 120;
 export const REMOVE_DISTANCE = 20; // Behind player
 
-export const IMMORTALITY_DURATION = 5000; // Standard ability duration
-export const IMMORTALITY_VEST_DURATION = 10000; // 10 seconds for the pickup
-export const JUMP_BOOTS_DURATION = 15000; // 15 seconds
-export const IMMORTALITY_COOLDOWN = 15000; // 15 seconds total cooldown cycle
-export const MAGNET_DURATION = 10000; // 10 seconds
+// --- Power Up Durations (Increased) ---
+export const IMMORTALITY_DURATION = 8000; // Ability: 5s -> 8s
+export const IMMORTALITY_VEST_DURATION = 15000; // Vest: 10s -> 15s
+export const JUMP_BOOTS_DURATION = 20000; // Boots: 15s -> 20s
+export const IMMORTALITY_COOLDOWN = 20000; 
+export const MAGNET_DURATION = 20000; // Magnet: 10s -> 20s
+export const BULLET_DURATION = 14000; // 14 seconds
 
 // Standard Neon Colors for letters
 export const LETTER_COLORS = [

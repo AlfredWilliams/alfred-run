@@ -5,7 +5,7 @@
 
 
 import { create } from 'zustand';
-import { GameStatus, RUN_SPEED_BASE, IMMORTALITY_DURATION, IMMORTALITY_VEST_DURATION, IMMORTALITY_COOLDOWN, MAGNET_DURATION, JUMP_BOOTS_DURATION } from './types';
+import { GameStatus, RUN_SPEED_BASE, IMMORTALITY_DURATION, IMMORTALITY_VEST_DURATION, IMMORTALITY_COOLDOWN, MAGNET_DURATION, JUMP_BOOTS_DURATION, BULLET_DURATION } from './types';
 
 interface GameState {
   status: GameStatus;
@@ -32,6 +32,7 @@ interface GameState {
   // New Features
   isFeverMode: boolean;
   isMagnetActive: boolean;
+  isShootingActive: boolean;
   combo: number; // Current combo counter
   multiplier: number; // Score multiplier (e.g. 1x, 2x, 3x)
 
@@ -57,6 +58,7 @@ interface GameState {
   activateVest: () => void;
   activateJumpBoots: () => void;
   activateShield: () => void;
+  activateShooting: () => void;
 
   // Shop / Abilities
   buyItem: (type: 'DOUBLE_JUMP' | 'MAX_LIFE' | 'HEAL' | 'IMMORTAL' | 'MAGNET', cost: number) => boolean;
@@ -67,7 +69,7 @@ interface GameState {
 }
 
 const DEFAULT_TARGET = ['A', 'L', 'F', 'R', 'E', 'D'];
-const MAX_LEVEL = 3;
+const MAX_LEVEL = 100; // Increased to allow day/night cycles
 
 // Helper to get high score safely
 const getStoredHighScore = () => {
@@ -102,6 +104,7 @@ export const useStore = create<GameState>((set, get) => ({
 
   isFeverMode: false,
   isMagnetActive: false,
+  isShootingActive: false,
   combo: 0,
   multiplier: 1,
 
@@ -133,6 +136,7 @@ export const useStore = create<GameState>((set, get) => ({
     hasShield: false,
     isFeverMode: false,
     isMagnetActive: false,
+    isShootingActive: false,
     combo: 0,
     multiplier: 1
   }),
@@ -168,6 +172,7 @@ export const useStore = create<GameState>((set, get) => ({
     hasShield: false,
     isFeverMode: false,
     isMagnetActive: false,
+    isShootingActive: false,
     combo: 0,
     multiplier: 1
   }),
@@ -233,6 +238,13 @@ export const useStore = create<GameState>((set, get) => ({
           set({ isMagnetActive: false });
       }, MAGNET_DURATION);
   },
+
+  activateShooting: () => {
+      set({ isShootingActive: true });
+      setTimeout(() => {
+          set({ isShootingActive: false });
+      }, BULLET_DURATION);
+  },
   
   activateVest: () => {
       // 10 second immortality
@@ -261,13 +273,16 @@ export const useStore = create<GameState>((set, get) => ({
       if (rand < 0.2 && lives < maxLives) {
           // Heal
           get().collectLife();
-      } else if (rand < 0.4) {
+      } else if (rand < 0.35) {
+          // Bullet
+          get().activateShooting();
+      } else if (rand < 0.5) {
           // Score Bonus
           get().addScore(500);
-      } else if (rand < 0.6) {
+      } else if (rand < 0.7) {
           // Magnet
           get().activateMagnet();
-      } else if (rand < 0.8) {
+      } else if (rand < 0.85) {
           // Shield
           get().activateShield();
       } else {
@@ -301,13 +316,13 @@ export const useStore = create<GameState>((set, get) => ({
       });
 
       if (newLetters.length === targetWord.length) {
-          set({ isFeverMode: true, isImmortalityActive: true });
+          set({ isFeverMode: true, isImmortalityActive: true, isShootingActive: true }); // Auto shoot in fever mode
           set({ speed: nextSpeed * 1.5 });
 
           setTimeout(() => {
               const current = get();
               if (current.status !== GameStatus.PLAYING) return;
-              set({ isFeverMode: false, isImmortalityActive: false });
+              set({ isFeverMode: false, isImmortalityActive: false, isShootingActive: false });
               
               if (current.level < MAX_LEVEL) {
                    current.advanceLevel();
